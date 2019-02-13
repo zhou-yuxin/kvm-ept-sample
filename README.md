@@ -9,7 +9,7 @@ The core of this project is a **easy-to-use kernel module** that provides the ca
 Only two steps are required.
 
 #### STEP 1. patch the kernel
-The standardized way to patch kernel is using a patch file, but it is dependent on the kernel version. Luckly, my patch to kernel is very simple and independent, see [kernel_patch/README.md](./kernel_patch/README.md). 
+The standardized way to patch kernel is using a patch file, but it is dependent on the kernel version. Luckly, my patch to kernel is very simple and independent, see [kernel_patch.md](./kernel_patch.md).
 
 Then, rebuild the kernel and reboot to use it.
 
