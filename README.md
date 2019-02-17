@@ -21,5 +21,30 @@ Then, run `sudo insmod kvm_ept_sample.ko` to load it. You cound see */proc/kvm_e
 ## How to use kvm-ept-sample
 A userspace program can open */proc/kvm_ept_sample* and call ioctl() to configure the arguments or get some information of sampling, and call read() to read the samples.
 
-#### DEMO 1. sample the memory accesses of a given QEMU-KVM instance and print them
-This demo is the simplest one to show how to use the APIs provided by kvm-ept-sample.
+The generic usage is like this (all error detections are omitted):
+```
+int fd = open("/proc/kvm_etp_sample", O_RDWR);  // open the module
+ioctl(fd, KVM_EPT_SAMPLE_CMD_INIT, pid);        // set the pid to sample
+ioctl(fd, KVM_EPT_SAMPLE_CMD_SET_PROT, xwr);    // set the access type to sample
+ioctl(fd, KVM_EPT_SAMPLE_CMD_SET_FREQ, freq);   // set the frequency to sample
+while(1)
+{
+    struct kvm_ept_sample samples[64];
+    ssize_t len = read(fd, samples, sizeof(samples));   // try to read the samples
+    if(len)
+    {
+        size_t count = len / sizeof(struct kvm_ept_sample);
+        for(int i = 0; i < count; i++)          // print all the samples
+        {
+            struct kvm_ept_sample* sample = samples + i;
+            printf("gfn = %x, wxr = %x\n", sample->gfn, sample->xwr);
+        }
+    }
+    else
+        sleep(1);   // wait for more samples
+}
+```
+
+#### DEMO 1. print_samples: sample the memory accesses of a given QEMU-KVM instance and print them
+This demo is the simplest one to show how to use the APIs provided by kvm-ept-sample. To build it, go into *demo* directory, and run `make print_samples`. Run `print_samples <pid>` to lanuch it, where <pid> is the the PID of a QEMU-KVM process.
+

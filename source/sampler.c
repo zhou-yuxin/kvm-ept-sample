@@ -144,7 +144,7 @@ static void set_landmine_on_ept(struct timer_list* timer)
     ({
         uint64_t pmd_val = (*pmdp);
         if(pmd_val)
-            (*pmdp) = pmd_val & prot_mask;
+            __sync_bool_compare_and_swap(pmdp, pmd_val, pmd_val & prot_mask);
     }));
     update_interval(sampler);
     sampler->timer.expires += sampler->adapter.interval;
@@ -182,7 +182,7 @@ static int on_ept_sample(struct kvm* kvm, unsigned long gpa, unsigned long code)
         return 0;
     if((pmd_val & EPT_PROT_ALL) == EPT_PROT_ALL)
         return 0;
-    (*pmdp) = pmd_val | EPT_PROT_ALL;
+    __sync_bool_compare_and_swap(pmdp, pmd_val, pmd_val | EPT_PROT_ALL);
     __sync_fetch_and_add(&(sampler->adapter.triggers), 1);
     sampler->func_on_sample(gpa, code & EPT_VIOLATION_ACC_ALL, sampler->privdata);
     return 1;
@@ -259,7 +259,7 @@ void sampler_deinit(struct sampler* sampler)
     ({
         uint64_t pmd_val = (*pmdp);
         if(pmd_val)
-            (*pmdp) = pmd_val | EPT_PROT_ALL;
+            __sync_bool_compare_and_swap(pmdp, pmd_val, pmd_val | EPT_PROT_ALL);
     }));
     kvm_put_kvm(kvm);
 }
