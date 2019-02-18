@@ -45,6 +45,14 @@ while(1)
 }
 ```
 
+As the above code shows, the initialization is consist of 4 steps:
+1. Firstly, you should `open("/proc/kvm_ept_sample", O_RDWR)` to get a file descriptor.
+2. Then, call `ioctl(fd, KVM_EPT_SAMPLE_CMD_INIT, pid)` to tell it which QEMU-KVM process you want to sample.
+3. Similarly, use `ioctl(fd, KVM_EPT_SAMPLE_CMD_SET_PROT, xwr)` to tell it which type of memory access you want to sample. The *xwr* is an 'or'-bits, where 'x' means the 'fetch instruction', 'w' means 'write' and 'r' means 'read'. For example, you want to sample 'fetch instruction' and 'write' but no 'read', you can set *xwr* to 110b, where 'x' = 1, 'w' = 1 and 'r' = 0.
+4. The last step of initialization is to set the sample frequency, in Hz. A non-zero frequency will start sampling, while a zero will stop it.
+
+All above `ioctl()`(s) return 0 if OK, or an error code if something is wrong. The *xwr* and *freq* are OK to be adjusted in runtime.
+
 #### DEMO 1. print_samples: sample the memory accesses of a given QEMU-KVM instance and print them
 This demo is the simplest one to show how to use the APIs provided by kvm-ept-sample. To build it, go into *demo* directory, and run `make print_samples`. Run `print_samples <pid>` to lanuch it, where <pid> is the the PID of a QEMU-KVM process.
 
