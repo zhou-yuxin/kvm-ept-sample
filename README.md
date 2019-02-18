@@ -49,9 +49,31 @@ As the above code shows, the initialization is consist of 4 steps:
 1. Firstly, you should `open("/proc/kvm_ept_sample", O_RDWR)` to get a file descriptor.
 2. Then, call `ioctl(fd, KVM_EPT_SAMPLE_CMD_INIT, pid)` to tell it which QEMU-KVM process you want to sample.
 3. Similarly, use `ioctl(fd, KVM_EPT_SAMPLE_CMD_SET_PROT, xwr)` to tell it which type of memory access you want to sample. The *xwr* is an 'or'-bits, where 'x' means the 'fetch instruction', 'w' means 'write' and 'r' means 'read'. For example, you want to sample 'fetch instruction' and 'write' but no 'read', you can set *xwr* to 110b, where 'x' = 1, 'w' = 1 and 'r' = 0.
-4. The last step of initialization is to set the sample frequency, in Hz. A non-zero frequency will start sampling, while a zero will stop it.
+4. The last step of initialization is to set the sample frequency, in Hz, by calling `ioctl(fd, KVM_EPT_SAMPLE_CMD_SET_FREQ, freq)`. A non-zero frequency will start sampling, while a zero will stop it.
 
-All above `ioctl()`(s) return 0 if OK, or an error code if something is wrong. The *xwr* and *freq* are OK to be adjusted in runtime.
+Another command, KVM_EPT_SAMPLE_CMD_GET_MEMSLOTS, is to get the memory slots of the target QEMU-KVM process. Memory slots are used to mapped GPA to HVA. See [DEMO 1: print_samples](./demo/print_samples.c) for details.
+
+If the target QEMU-KVM instance is no longer needed to be sampled, you can call `ioctl(fd, KVM_EPT_SAMPLE_CMD_DEINIT, NULL)` to deinitialize it. After that, you can re-initialize it, or just call `close(fd)` to destroy it. You may also call `close(fd)` to stop sampling and destroy it directly.
+
+All above `ioctl()` return 0 if OK, or an error code if something is wrong. The *xwr* and *freq* are OK to be adjusted in runtime.
+
+--|COMMAND|VALUE
+--|--|--:
+#define|KVM_EPT_SAMPLE_CMD_INIT|1200
+#define|KVM_EPT_SAMPLE_CMD_SET_PROT|1201
+#define|KVM_EPT_SAMPLE_CMD_SET_FREQ|1202
+#define|KVM_EPT_SAMPLE_CMD_GET_MEMSLOTS|1203
+#define|KVM_EPT_SAMPLE_CMD_DEINIT|1204
+
+After initialization, you can call `read()` to get samples. A sample structure is defined as below:
+```
+struct sample
+{
+    uint32_t gfn: 29;   // the Guest Physical Page Frame Number
+    uint32_t xwr: 3;    // the 'or'-bits of access type
+};
+```
+See [DEMO 1: print_samples](./demo/print_samples.c) for details.
 
 #### DEMO 1. print_samples: sample the memory accesses of a given QEMU-KVM instance and print them
 This demo is the simplest one to show how to use the APIs provided by kvm-ept-sample. To build it, go into *demo* directory, and run `make print_samples`. Run `print_samples <pid>` to lanuch it, where <pid> is the the PID of a QEMU-KVM process.
