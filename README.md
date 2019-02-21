@@ -3,7 +3,7 @@ In a hybrid memory system, if hot pages reside in DRAM (fast but expensive) and 
 
 This project is aimed to help adopt hybrid memory in Virtual Machine Cloud on Intel platform. Imagine a physical server is equipped with both DRAM and NVM, and divided into many virtual machines for sell, and a daemon process is detecting the memory access pattern of each VM instance and migrate hot / cold pages to DRAM / NVM periodically. If so, VM customers use hybrid memory transparently, and the VM provider saves money.
 
-The core of this project is a **easy-to-use kernel module** that provides the capability to sample memory accesses of a KVM instance based on Intel VT-x. Although the high-level policy of page temperature estimating and page migration are none of its business, the project as well provides a demo. The demo itself is a simple but useful tool to migrate pages of a VM instance.
+The core of this project is a **easy-to-use kernel module** that provides the capability to sample memory accesses of a KVM instance based on Intel VT-x. Although the high-level policy of page temperature estimating and page migration are none of its business, the project as well provides a demo. The demo itself is a simple but useful tool to migrate pages of a VM instance. See [DEMO 2: kvm_hybridmem](./demo/kvm_hybridmem) for details.
 
 ## How to load kvm-ept-sample
 Only two steps are required.
@@ -14,7 +14,7 @@ The standardized way to patch kernel is using a patch file, but it is dependent 
 Then, rebuild the kernel and reboot to use it.
 
 #### STEP 2. build the kernel module
-Get into the directory *source*, simply run `make`, then a kernel module named *kvm_ept_sample.ko* is created, which is the core of this project.
+Get into the directory *src*, simply run `make`, then a kernel module named *kvm_ept_sample.ko* is created, which is the core of this project.
 
 Then, run `sudo insmod kvm_ept_sample.ko` to load it. You cound see */proc/kvm_ept_sample* if all is ok.
 
@@ -51,7 +51,7 @@ As the above code shows, the initialization is consist of 4 steps:
 3. Similarly, use `ioctl(fd, KVM_EPT_SAMPLE_CMD_SET_PROT, xwr)` to tell it which type of memory access you want to sample. The *xwr* is an 'or'-bits, where 'x' means the 'fetch instruction', 'w' means 'write' and 'r' means 'read'. For example, you want to sample 'fetch instruction' and 'write' but no 'read', you can set *xwr* to 110b, where 'x' = 1, 'w' = 1 and 'r' = 0.
 4. The last step of initialization is to set the sample frequency, in Hz, by calling `ioctl(fd, KVM_EPT_SAMPLE_CMD_SET_FREQ, freq)`. A non-zero frequency will start sampling, while a zero will stop it.
 
-Another command, KVM_EPT_SAMPLE_CMD_GET_MEMSLOTS, is to get the memory slots of the target QEMU-KVM process. Memory slots are used to mapped GPA to HVA. See [DEMO 1: print_samples](./demo/print_samples.c) for details.
+Another command, KVM_EPT_SAMPLE_CMD_GET_MEMSLOTS, is to get the memory slots of the target QEMU-KVM process. Memory slots are used to mapped GPA to HVA. See [DEMO 1: print_samples](./demo/print_samples) for details.
 
 If the target QEMU-KVM instance is no longer needed to be sampled, you can call `ioctl(fd, KVM_EPT_SAMPLE_CMD_DEINIT, NULL)` to deinitialize it. After that, you can re-initialize it, or just call `close(fd)` to destroy it. You may also call `close(fd)` to stop sampling and destroy it directly.
 
@@ -73,8 +73,5 @@ struct sample
     uint32_t xwr: 3;    // the 'or'-bits of access type
 };
 ```
-See [DEMO 1: print_samples](./demo/print_samples.c) for details.
-
-#### DEMO 1. print_samples: sample the memory accesses of a given QEMU-KVM instance and print them
-This demo is the simplest one to show how to use the APIs provided by kvm-ept-sample. To build it, go into *demo* directory, and run `make print_samples`. Run `print_samples <pid>` to lanuch it, where <pid> is the the PID of a QEMU-KVM process.
+`read()` on kvm-ept-sample is always non-blocking. If `read()` returns 0, there is no sample. In this case, usually you can try again later. If `read()` returns a positive value *len*, *len* must be a multiple of `sizeof(struct sample)`. And the samples are in the buffer. See [DEMO 1: print_samples](./demo/print_samples) for details.
 

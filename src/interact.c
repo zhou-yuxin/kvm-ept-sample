@@ -26,6 +26,8 @@ int interact_open(struct inode* inode, struct file* file)
         ERROR0(ret, "queue_init(&(interact->queue), ...) failed");
     }
     spin_lock_init(&(interact->queue_lock));
+    assert(!interact->sampler.privdata);
+    assert(!file->private_data);
     file->private_data = interact;
     return 0;
 }
@@ -54,7 +56,10 @@ static int handle_cmd_init(struct interact* interact, pid_t pid)
     if(interact->sampler.privdata)
         ERROR0(-EINVAL, "this fd has been inited already");
     if((ret = sampler_init(&(interact->sampler), pid, on_ept_sample, interact)))
+    {
+        assert(!interact->sampler.privdata);
         ERROR1(ret, "sampler_init(&(interact->sampler), %d, ...) failed", pid);
+    }
     assert(interact->sampler.privdata == interact);
     return 0;
 }

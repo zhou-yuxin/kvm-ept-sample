@@ -155,15 +155,17 @@ static void set_landmine_on_ept(struct timer_list* timer)
 #define EPT_PUD_INDEX(addr)     (((addr) >> 30) & 0x1ff)
 #define EPT_PMD_INDEX(addr)     (((addr) >> 21) & 0x1ff)
 
-#define EPT_VIOLATION_ACC_READ      1
-#define EPT_VIOLATION_ACC_WRITE     2
-#define EPT_VIOLATION_ACC_INSTR     4
-#define EPT_VIOLATION_ACC_ALL       7
+#define EPT_VIOLATION_ACC_READ      (1 << 0)
+#define EPT_VIOLATION_ACC_WRITE     (1 << 1)
+#define EPT_VIOLATION_ACC_INSTR     (1 << 2)
+#define EPT_VIOLATION_ACC_ALL       (EPT_VIOLATION_ACC_READ | EPT_VIOLATION_ACC_WRITE | \
+                                        EPT_VIOLATION_ACC_INSTR)
 
-#define EPT_PROT_READ   1
-#define EPT_PROT_WRITE  2
-#define EPT_PROT_EXEC   4
-#define EPT_PROT_ALL    7
+#define EPT_PROT_READ   (1 << 0)
+#define EPT_PROT_WRITE  (1 << 1)
+#define EPT_PROT_EXEC   (1 << 2)
+#define EPT_PROT_UEXEC  (1 << 10)
+#define EPT_PROT_ALL    (EPT_PROT_READ | EPT_PROT_WRITE | EPT_PROT_EXEC | EPT_PROT_UEXEC)
 
 static int on_ept_sample(struct kvm* kvm, unsigned long gpa, unsigned long code)
 {
@@ -197,7 +199,6 @@ int sampler_init(struct sampler* sampler, pid_t pid,
     assert(sampler);
     if(!(sampler->func_on_sample = func_on_sample))
         ERROR0(-EINVAL, "param <func_on_sample = NULL> is invalid");
-    sampler->privdata = privdata;
     if((ret = get_kvm_by_vpid(pid, &kvm)))
         ERROR1(ret, "get_kvm_by_vpid(%d, &kvm) failed", pid);
     sampler->kvm = kvm;
@@ -215,6 +216,7 @@ int sampler_init(struct sampler* sampler, pid_t pid,
     sampler->prot_mask = EPT_PROT_ALL;
     sampler->hz = 0;
     init_timer_key(&(sampler->timer), set_landmine_on_ept, 0, NULL, NULL);
+    sampler->privdata = privdata;
     wmb();
     assert(!kvm->ept_sample_privdata);
     kvm->ept_sample_privdata = sampler;
